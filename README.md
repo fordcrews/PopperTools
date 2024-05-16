@@ -1,2 +1,2 @@
 # PopperTools
-A bunch of tools for pinup Popper
+A few tools for pinup Popper managment.
