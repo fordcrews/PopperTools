@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>PinUP Popper List Select Creation Tool</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .scrollable {
+            max-height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .game-card {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .copy-button-container {
+            margin-top: 10px;
+        }
+        pre.copy-pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Create Select Queries</h1>
+        <div class="mb-4">
+            <label for="columnSelect">Select a Column:</label>
+            <select id="columnSelect" class="form-control" onchange="fetchValues()">
+                {% for column in columns %}
+                    <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="values" class="mb-4 scrollable"></div>
+        <button class="btn btn-secondary mb-4" onclick="clearCheckboxes()">Clear Checkboxes</button>
+
+        <h2>Selected Games</h2>
+        <p id="gameCount">Games Count: 0</p>
+        <div id="gameList" class="scrollable"></div>
+
+        <h2 class="mt-4">SQL Query</h2>
+        <pre id="sqlQuery" class="copy-pre"></pre>
+        <div class="copy-button-container">
+            <button class="btn btn-primary" id="copyButton">Copy Query to Clipboard</button>
+        </div>
+        <div id="copyMessage" class="text-success"></div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            fetchValues();
+            clearCheckboxes();
+        });
+
+        function clearCheckboxes() {
+            let checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+            fetchGames(); // Reset the game list and SQL query
+        }
+
+        function fetchValues() {
+            let column = document.getElementById('columnSelect').value;
+            fetch('/get_values', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({column: column})
+            })
+            .then(response => response.json())
+            .then(data => {
+                let valuesDiv = document.getElementById('values');
+                valuesDiv.innerHTML = '';
+                data.forEach((value) => {
+                    let div = document.createElement('div');
+                    div.className = 'form-check';
+                    div.innerHTML = `<input class="form-check-input" type="checkbox" id="${value[0]}" name="value" value="${value[0]}" onchange="fetchGames()">
+                                     <label class="form-check-label" for="${value[0]}">${value[0]} (${value[1]})</label>`;
+                    valuesDiv.appendChild(div);
+                });
+            });
+        }
+
+        function fetchGames() {
+            let selectedValues = [];
+            let checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            checkboxes.forEach((checkbox) => {
+                selectedValues.push(checkbox.value);
+            });
+
+            let column = document.getElementById('columnSelect').value;
+
+            fetch('/get_games', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({column: column, values: selectedValues})
+            })
+            .then(response => response.json())
+            .then(data => {
+                let gameList = document.getElementById('gameList');
+                gameList.innerHTML = '';
+                let count = data.length;
+                document.getElementById('gameCount').innerText = `Games Count: ${count}`;
+                data.forEach((game) => {
+                    let div = document.createElement('div');
+                    div.textContent = game;
+                    div.className = 'game-card';
+                    gameList.appendChild(div);
+                });
+
+                let sqlQuery = `SELECT * FROM Games WHERE ${column} IN ('${selectedValues.join("','")}')`;
+                document.getElementById('sqlQuery').innerText = sqlQuery;
+            });
+        }
+
+        document.getElementById('copyButton').addEventListener('click', function() {
+            let sqlQueryElement = document.getElementById('sqlQuery');
+            let copyText = sqlQueryElement.innerText;
+            let textarea = document.createElement('textarea');
+            textarea.value = copyText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            document.getElementById('copyMessage').innerText = "SQL query copied to clipboard!";
+            setTimeout(() => {
+                document.getElementById('copyMessage').innerText = "";
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
