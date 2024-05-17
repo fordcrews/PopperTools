@@ -1,8 +1,8 @@
 #include <BleKeyboard.h>
 
-BleKeyboard bleKeyboard("ESP32 Keyboard", "ESP32", 100);
+BleKeyboard bleKeyboard("XIAO ESP32C3 Keyboard", "ESP32C3", 100);
 
-const int buttonPins[] = {22, 21, 17, 16, 32, 25, 27, 26};
+const int buttonPins[] = {2, 3, 4, 5, 6, 7, 8, 9};
 const char keyMap[] = {KEY_END, '7', '8', '9', '0', '-', '=', 'n'};
 
 void setup() {
@@ -27,3 +27,4 @@ void loop() {
   }
   delay(10);
 }
+
