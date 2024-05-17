@@ -16,3 +16,16 @@ button below the query box, to copy the query to paste into popup list creation 
     Button 6 (Keyboard '-'): GPIO 25
     Button 7 (Keyboard '='): GPIO 27
     Button 8 (Keyboard 'N'): GPIO 26
+
+# puplookupcsv.py  UPDATES PupLookup.cxv
+ 
+    Requirements:
+        Chrome browser installed.
+        selenium and beautifulsoup4 libraries installed. Install them using:
+
+    pip install selenium beautifulsoup4
+
+Functionality:
+
+    Backs up the existing puplookup.csv to puplookup.bak, overwriting any existing backup.
+    Downloads the CSV from the specified webpage and saves it as puplookup.csv.
