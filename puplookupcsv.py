@@ -1,5 +1,6 @@
 import os
 import time
+import urllib.parse
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -48,34 +49,15 @@ for link in links:
 if csv_data_url:
     # Extract the CSV content from the data URL
     csv_content = csv_data_url.split(',', 1)[1]
+
+    # Decode the percent-encoded CSV content
+    decoded_csv_content = urllib.parse.unquote(csv_content)
+
     file_name = os.path.join(download_dir, "puplookup.csv")
 
     # Save the CSV content to a file
     with open(file_name, "w", encoding="utf-8") as csv_file:
-        csv_file.write(csv_content)
-    print(f"Saved {file_name}")
-else:
-    print("CSV data URL not found.")
-
-driver.quit()
-
-# Extract the CSV data URL
-links = driver.find_elements(By.XPATH, "//a[@href]")
-csv_data_url = None
-for link in links:
-    href = link.get_attribute("href")
-    if href.startswith("data:text/csv"):
-        csv_data_url = href
-        break
-
-if csv_data_url:
-    # Extract the CSV content from the data URL
-    csv_content = csv_data_url.split(',', 1)[1]
-    file_name = os.path.join(download_dir, "puplookup.csv")
-
-    # Save the CSV content to a file
-    with open(file_name, "w", encoding="utf-8") as csv_file:
-        csv_file.write(csv_content)
+        csv_file.write(decoded_csv_content)
     print(f"Saved {file_name}")
 else:
     print("CSV data URL not found.")
