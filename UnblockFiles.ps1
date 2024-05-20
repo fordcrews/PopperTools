@@ -1,5 +1,5 @@
 # Define the directory path
-$directoryPath = "C:\Path\To\Your\Directory"
+$directoryPath = ".\"
 
 # Get all files in the directory and subdirectories
 $files = Get-ChildItem -Path $directoryPath -Recurse -File
