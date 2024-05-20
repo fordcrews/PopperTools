@@ -1,12 +1,17 @@
 # Define the directory path
-$directoryPath = ".\"
+$directoryPath = "C:\Path\To\Your\Directory"
 
 # Get all files in the directory and subdirectories
-$files = Get-ChildItem -Path $directoryPath -Recurse
+$files = Get-ChildItem -Path $directoryPath -Recurse -File
 
 # Unblock each file
 foreach ($file in $files) {
-    Unblock-File -Path $file.FullName
+    try {
+        Unblock-File -Path $file.FullName
+        Write-Host "Unblocked: $($file.FullName)"
+    } catch {
+        Write-Host "Failed to unblock: $($file.FullName) - $($_.Exception.Message)"
+    }
 }
 
-Write-Host "All files in $directoryPath have been unblocked."
+Write-Host "All accessible files in $directoryPath have been processed."
