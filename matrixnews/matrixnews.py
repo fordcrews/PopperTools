@@ -34,8 +34,8 @@ def get_calendar_events(credentials_file, calendar_id):
     event_str = "Events: " + "; ".join([event['summary'] for event in events])
     return event_str
 
-def send_to_doflinx(message):
-    cmd = f'DOFLinxMsg "{message}"'
+def send_to_doflinx(message, doflinx_path, device_number):
+    cmd = f'"{doflinx_path}" {device_number} "{message}"'
     subprocess.run(cmd, shell=True)
 
 # Replace with your actual values
@@ -43,6 +43,8 @@ API_KEY = "your_openweathermap_api_key"
 LOCATION = "your_city"
 GOOGLE_CREDENTIALS_FILE = "path_to_your_google_service_account_credentials.json"
 CALENDAR_ID = "your_calendar_id"
+DOFLINX_PATH = "C:\\DirectOutput\\DOFLinxMsg.exe"  # Update this path to your actual DOFLinxMsg.exe path
+DEVICE_NUMBER = "1"  # Replace with the correct device number for your LED matrix
 
 date_time = get_date_time()
 temperature = get_temperature(API_KEY, LOCATION)
@@ -51,4 +53,4 @@ events = get_calendar_events(GOOGLE_CREDENTIALS_FILE, CALENDAR_ID)
 message = f"Date: {date_time} Temp: {temperature} {events}"
 
 print(message)
-send_to_doflinx(message)
+send_to_doflinx(message, DOFLINX_PATH, DEVICE_NUMBER)
