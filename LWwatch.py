@@ -3,6 +3,7 @@ import time
 import zipfile
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from difflib import SequenceMatcher
 
 class IniFileHandler(FileSystemEventHandler):
     def __init__(self, download_dir):
@@ -24,17 +25,17 @@ class IniFileHandler(FileSystemEventHandler):
                 print(f"Error: Could not rename {file_path}")
                 return
 
-            # Find the most recent zip file
+            # Find the most similar zip file
             zip_files = [f for f in os.listdir(self.download_dir) if f.endswith(".zip")]
             if not zip_files:
                 return
-            
-            zip_files.sort(key=lambda x: os.path.getmtime(os.path.join(self.download_dir, x)), reverse=True)
-            most_recent_zip = zip_files[0]
-            most_recent_zip_path = os.path.join(self.download_dir, most_recent_zip)
 
-            if self.is_file_complete(most_recent_zip_path):
-                self.process_zip_file(most_recent_zip_path, new_ini_path, base_name + "_LW")
+            most_similar_zip = self.find_most_similar_zip(zip_files, base_name)
+            if most_similar_zip:
+                most_recent_zip_path = os.path.join(self.download_dir, most_similar_zip)
+
+                if self.is_file_complete(most_recent_zip_path):
+                    self.process_zip_file(most_recent_zip_path, new_ini_path, base_name + "_LW")
 
     def rename_file_with_retries(self, old_path, new_path, retries=10, delay=2):
         for _ in range(retries):
@@ -83,6 +84,16 @@ class IniFileHandler(FileSystemEventHandler):
             except PermissionError:
                 time.sleep(delay)
         return False
+
+    def find_most_similar_zip(self, zip_files, base_name):
+        max_similarity = 0
+        most_similar_zip = None
+        for zip_file in zip_files:
+            similarity = SequenceMatcher(None, base_name, zip_file).ratio()
+            if similarity > max_similarity:
+                max_similarity = similarity
+                most_similar_zip = zip_file
+        return most_similar_zip
 
 def monitor_download_folder(download_dir):
     event_handler = IniFileHandler(download_dir)
