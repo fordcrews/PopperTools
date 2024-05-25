@@ -59,5 +59,5 @@ def monitor_download_folder(download_dir):
     observer.join()
 
 if __name__ == "__main__":
-    download_directory = "path_to_your_download_directory"
+    download_directory = r"path_to_your_download_directory"
     monitor_download_folder(download_directory)
