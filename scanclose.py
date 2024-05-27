@@ -4,6 +4,7 @@ import sqlite3
 import difflib
 import shutil
 import argparse
+import html
 
 # Function to fetch table names from the SQLite database
 def fetch_table_names(database_path, debug=False):
@@ -35,7 +36,7 @@ def fetch_table_names(database_path, debug=False):
     emulator_id_column = 'EMUID' if 'EMUID' in game_columns else game_columns[1]
 
     placeholder = ', '.join(['?'] * len(visual_pinball_ids))
-    cursor.execute(f"SELECT {game_display_column} FROM Games WHERE {emulator_id_column} IN ({placeholder})", visual_pinball_ids)
+    cursor.execute(f"SELECT {game_display_column} FROM Games WHERE {emulator_id_column} IN ({placeholder}) ORDER BY {game_display_column}", visual_pinball_ids)
     table_names = [row[0] for row in cursor.fetchall()]
 
     if debug:
@@ -53,7 +54,7 @@ def clean_filename(filename):
     return cleaned_filename.strip()
 
 # Function to find the best match with similarity score
-def find_best_match(filename, table_names, threshold=0.90, debug=False):
+def find_best_matches(filename, table_names, threshold=0.90, debug=False):
     cleaned_filename = clean_filename(filename)
     matches = []
     for table_name in table_names:
@@ -77,7 +78,7 @@ def ensure_unique_filename(directory, filename):
     return unique_filename
 
 # Function to process media files
-def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=False, process_first=None, threshold=0.90, debug=False):
+def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=False, threshold=0.90, debug=False):
     summary = {
         "Audio": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "AudioLaunch": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
@@ -98,18 +99,19 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
     }
     total_summary = {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0}
 
-    table_names_to_process = table_names[:process_first] if process_first else table_names
+    actions = []
 
-    for root, _, files in os.walk(media_dir):
+    for root, _, files in sorted(os.walk(media_dir), key=lambda x: x[0]):
         if debug:
             print(f"\nProcessing directory: {root}")
             print(f"Number of files: {len(files)}")
 
-        for file in files:
+        for file in sorted(files):
             if any(file.endswith(ext) for ext in media_types):
                 file_path = os.path.join(root, file)
+                original_file_path = file_path  # Track the original file path
                 file_name = os.path.splitext(file)[0]
-                matches = find_best_match(file_name, table_names_to_process, threshold, debug=debug)
+                matches = find_best_matches(file_name, table_names, threshold, debug=debug)
                 media_type = next((key for key in summary if key in root), "Other")
 
                 summary[media_type]["Processed"] += 1
@@ -122,35 +124,45 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                     if confidence >= 95:
                         if new_file_path != file_path:
                             if dry_run:
-                                print(f"{confidence:.2f}% - Dry run: Would rename: {file_path} -> {new_file_path}")
+                                actions.append(["Rename", best_match, file_path, new_file_path, f"{confidence:.2f}%"])
                                 summary[media_type]["Renamed"] += 1
                                 total_summary["Renamed"] += 1
                             else:
                                 if not os.path.exists(new_file_path):
                                     os.rename(file_path, new_file_path)
-                                    print(f"{confidence:.2f}% - Renamed: {file_path} -> {new_file_path}")
+                                    actions.append(["Rename", best_match, file_path, new_file_path, f"{confidence:.2f}%"])
                                     summary[media_type]["Renamed"] += 1
                                     total_summary["Renamed"] += 1
+                                    file_path = new_file_path  # Update file_path to the new path
                                 else:
-                                    print(f"{confidence:.2f}% - Skipped renaming {file_path} because {new_file_path} already exists")
                                     summary[media_type]["Left"] += 1
                                     total_summary["Left"] += 1
-                        else:
-                            summary[media_type]["Left"] += 1
-                            total_summary["Left"] += 1
+
+                        for match in matches[1:]:
+                            link_name = os.path.join(root, match[1] + os.path.splitext(file)[1])
+                            if dry_run:
+                                actions.append(["Link", match[1], original_file_path, link_name, f"{match[0]*100:.2f}%"])
+                                summary[media_type]["Linked"] += 1
+                                total_summary["Linked"] += 1
+                            else:
+                                if not os.path.exists(link_name):
+                                    os.link(original_file_path, link_name)
+                                    actions.append(["Link", match[1], original_file_path, link_name, f"{match[0]*100:.2f}%"])
+                                    summary[media_type]["Linked"] += 1
+                                    total_summary["Linked"] += 1
                     else:
                         backup_subdir = os.path.relpath(root, media_dir)
                         backup_path = os.path.join(backup_dir, backup_subdir)
                         if dry_run:
                             backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
-                            print(f"Dry run: Would move: {file_path} -> {os.path.join(backup_path, backup_filename)}")
+                            actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), f"{confidence:.2f}% (below threshold)"])
                             summary[media_type]["BackedUp"] += 1
                             total_summary["BackedUp"] += 1
                         else:
                             os.makedirs(backup_path, exist_ok=True)
                             backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
                             shutil.move(file_path, os.path.join(backup_path, backup_filename))
-                            print(f"Moved: {file_path} -> {os.path.join(backup_path, backup_filename)}")
+                            actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), f"{confidence:.2f}% (below threshold)"])
                             summary[media_type]["BackedUp"] += 1
                             total_summary["BackedUp"] += 1
                 else:
@@ -158,21 +170,70 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                     backup_path = os.path.join(backup_dir, backup_subdir)
                     if dry_run:
                         backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
-                        print(f"Dry run: Would move: {file_path} -> {os.path.join(backup_path, backup_filename)}")
+                        actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), "No close matches found"])
                         summary[media_type]["BackedUp"] += 1
                         total_summary["BackedUp"] += 1
                     else:
                         os.makedirs(backup_path, exist_ok=True)
                         backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
                         shutil.move(file_path, os.path.join(backup_path, backup_filename))
-                        print(f"Moved: {file_path} -> {os.path.join(backup_path, backup_filename)}")
+                        actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), "No close matches found"])
                         summary[media_type]["BackedUp"] += 1
                         total_summary["BackedUp"] += 1
 
+    # Generate HTML report
+    html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
+<title>Media Processing Report</title>
+</head>
+<body>
+<div class="container">
+<h2>Media Processing Report</h2>
+<table id="report" class="table table-striped table-bordered" style="width:100%">
+<thead>
+<tr>
+<th>Action</th>
+<th>Table Name</th>
+<th>Original File Name</th>
+<th>Replacement File Name</th>
+<th>% Match</th>
+</tr>
+</thead>
+<tbody>
+"""
+
+    for action in actions:
+        html_content += f"<tr><td>{html.escape(action[0])}</td><td>{html.escape(action[1])}</td><td>{html.escape(action[2])}</td><td>{html.escape(action[3])}</td><td>{html.escape(action[4])}</td></tr>"
+
+    html_content += """
+</tbody>
+</table>
+<script>
+$(document).ready(function() {
+$('#report').DataTable();
+} );
+</script>
+</div>
+</body>
+</html>
+"""
+
+    with open("report.html", "w", encoding="utf-8") as report_file:
+        report_file.write(html_content)
+
     print("\nSummary:")
     for key, value in summary.items():
-        print(f"{key}: Processed: {value['Processed']}, Renamed: {value['Renamed']}, BackedUp: {value['BackedUp']}, Left: {value['Left']}")
-    print(f"\nTotal: Processed: {total_summary['Processed']}, Renamed: {total_summary['Renamed']}, BackedUp: {total_summary['BackedUp']}, Left: {total_summary['Left']}")
+        print(f"{key}: Processed: {value['Processed']}, Linked: {value['Linked']}, Renamed: {value['Renamed']}, BackedUp: {value['BackedUp']}, Left: {value['Left']}")
+    print(f"\nTotal: Processed: {total_summary['Processed']}, Linked: {total_summary['Linked']}, Renamed: {total_summary['Renamed']}, BackedUp: {total_summary['BackedUp']}, Left: {total_summary['Left']}")
 
 def main():
     parser = argparse.ArgumentParser(description='Rename or move media files based on matching table names.')
@@ -187,7 +248,7 @@ def main():
     media_types = ['.jpg', '.mp4', '.png', '.apng', '.mp3']
 
     table_names = fetch_table_names(database_path, debug=args.debug)
-    process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=args.dry_run, process_first=args.process_first, debug=args.debug)
+    process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=args.dry_run, threshold=0.90, debug=args.debug)
 
 if __name__ == "__main__":
     main()
