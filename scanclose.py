@@ -66,6 +66,16 @@ def find_best_match(filename, table_names, threshold=0.90, debug=False):
     matches.sort(reverse=True, key=lambda x: x[0])
     return matches
 
+# Function to ensure unique filenames in the backup directory
+def ensure_unique_filename(directory, filename):
+    base, ext = os.path.splitext(filename)
+    counter = 1
+    unique_filename = filename
+    while os.path.exists(os.path.join(directory, unique_filename)):
+        unique_filename = f"{base}_{counter}{ext}"
+        counter += 1
+    return unique_filename
+
 # Function to process media files
 def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=False, process_first=None, threshold=0.90, debug=False):
     summary = {
@@ -129,25 +139,33 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                             summary[media_type]["Left"] += 1
                             total_summary["Left"] += 1
                     else:
+                        backup_subdir = os.path.relpath(root, media_dir)
+                        backup_path = os.path.join(backup_dir, backup_subdir)
                         if dry_run:
-                            print(f"Dry run: Would move: {file_path} -> {backup_dir}")
+                            backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
+                            print(f"Dry run: Would move: {file_path} -> {os.path.join(backup_path, backup_filename)}")
                             summary[media_type]["BackedUp"] += 1
                             total_summary["BackedUp"] += 1
                         else:
-                            os.makedirs(backup_dir, exist_ok=True)
-                            shutil.move(file_path, backup_dir)
-                            print(f"Moved: {file_path} -> {backup_dir}")
+                            os.makedirs(backup_path, exist_ok=True)
+                            backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
+                            shutil.move(file_path, os.path.join(backup_path, backup_filename))
+                            print(f"Moved: {file_path} -> {os.path.join(backup_path, backup_filename)}")
                             summary[media_type]["BackedUp"] += 1
                             total_summary["BackedUp"] += 1
                 else:
+                    backup_subdir = os.path.relpath(root, media_dir)
+                    backup_path = os.path.join(backup_dir, backup_subdir)
                     if dry_run:
-                        print(f"Dry run: Would move: {file_path} -> {backup_dir}")
+                        backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
+                        print(f"Dry run: Would move: {file_path} -> {os.path.join(backup_path, backup_filename)}")
                         summary[media_type]["BackedUp"] += 1
                         total_summary["BackedUp"] += 1
                     else:
-                        os.makedirs(backup_dir, exist_ok=True)
-                        shutil.move(file_path, backup_dir)
-                        print(f"Moved: {file_path} -> {backup_dir}")
+                        os.makedirs(backup_path, exist_ok=True)
+                        backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
+                        shutil.move(file_path, os.path.join(backup_path, backup_filename))
+                        print(f"Moved: {file_path} -> {os.path.join(backup_path, backup_filename)}")
                         summary[media_type]["BackedUp"] += 1
                         total_summary["BackedUp"] += 1
 
