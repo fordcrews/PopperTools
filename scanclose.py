@@ -6,8 +6,8 @@ import shutil
 import argparse
 import html
 
-# Function to fetch table names from the SQLite database
-def fetch_table_names(database_path, debug=False):
+# Function to fetch table filenames from the SQLite database
+def fetch_table_filenames(database_path, debug=False):
     conn = sqlite3.connect(database_path)
     cursor = conn.cursor()
 
@@ -32,18 +32,18 @@ def fetch_table_names(database_path, debug=False):
     if debug:
         print(f"Columns in Games table: {game_columns}")
 
-    game_display_column = 'GameDisplay' if 'GameDisplay' in game_columns else game_columns[0]
+    game_filename_column = 'GameFileName' if 'GameFileName' in game_columns else game_columns[0]
     emulator_id_column = 'EMUID' if 'EMUID' in game_columns else game_columns[1]
 
     placeholder = ', '.join(['?'] * len(visual_pinball_ids))
-    cursor.execute(f"SELECT {game_display_column} FROM Games WHERE {emulator_id_column} IN ({placeholder}) ORDER BY {game_display_column}", visual_pinball_ids)
-    table_names = [row[0] for row in cursor.fetchall()]
+    cursor.execute(f"SELECT {game_filename_column} FROM Games WHERE {emulator_id_column} IN ({placeholder}) ORDER BY {game_filename_column}", visual_pinball_ids)
+    table_filenames = [os.path.splitext(row[0])[0] for row in cursor.fetchall()]
 
     if debug:
-        print(f"Visual Pinball table names: {table_names}")
+        print(f"Visual Pinball table filenames: {table_filenames}")
 
     conn.close()
-    return table_names
+    return table_filenames
 
 # Function to clean and standardize filenames by removing common extraneous details
 def clean_filename(filename):
@@ -54,16 +54,16 @@ def clean_filename(filename):
     return cleaned_filename.strip()
 
 # Function to find the best match with similarity score
-def find_best_matches(filename, table_names, threshold=0.90, debug=False):
+def find_best_matches(filename, table_filenames, threshold=0.90, debug=False):
     cleaned_filename = clean_filename(filename)
     matches = []
-    for table_name in table_names:
-        cleaned_table_name = clean_filename(table_name)
-        similarity = difflib.SequenceMatcher(None, cleaned_filename, cleaned_table_name).ratio()
+    for table_filename in table_filenames:
+        cleaned_table_filename = clean_filename(table_filename)
+        similarity = difflib.SequenceMatcher(None, cleaned_filename, cleaned_table_filename).ratio()
         if similarity >= 0.80 and debug:
-            print(f"Comparing '{cleaned_filename}' with '{cleaned_table_name}' - Similarity: {similarity:.2f}")
+            print(f"Comparing '{cleaned_filename}' with '{cleaned_table_filename}' - Similarity: {similarity:.2f}")
         if similarity >= threshold:
-            matches.append((similarity, table_name))
+            matches.append((similarity, table_filename))
     matches.sort(reverse=True, key=lambda x: x[0])
     return matches
 
@@ -78,7 +78,7 @@ def ensure_unique_filename(directory, filename):
     return unique_filename
 
 # Function to process media files
-def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=False, threshold=0.90, debug=False):
+def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=False, threshold=0.90, debug=False):
     summary = {
         "Audio": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "AudioLaunch": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
@@ -111,7 +111,7 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                 file_path = os.path.join(root, file)
                 original_file_path = file_path  # Track the original file path
                 file_name = os.path.splitext(file)[0]
-                matches = find_best_matches(file_name, table_names, threshold, debug=debug)
+                matches = find_best_matches(file_name, table_filenames, threshold, debug=debug)
                 media_type = next((key for key in summary if key in root), "Other")
 
                 summary[media_type]["Processed"] += 1
@@ -145,7 +145,7 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                                 summary[media_type]["Linked"] += 1
                                 total_summary["Linked"] += 1
                             else:
-                                if not os.path.exists(link_name):
+                                if os.path.exists(original_file_path) and not os.path.exists(link_name):
                                     os.link(original_file_path, link_name)
                                     actions.append(["Link", match[1], original_file_path, link_name, f"{match[0]*100:.2f}%"])
                                     summary[media_type]["Linked"] += 1
@@ -181,6 +181,10 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
                         summary[media_type]["BackedUp"] += 1
                         total_summary["BackedUp"] += 1
 
+    # Delete old report.html if it exists
+    if os.path.exists("report.html"):
+        os.remove("report.html")
+
     # Generate HTML report
     html_content = """
 <!DOCTYPE html>
@@ -202,7 +206,7 @@ def process_media_files(media_dir, table_names, media_types, backup_dir, dry_run
 <thead>
 <tr>
 <th>Action</th>
-<th>Table Name</th>
+<th>Table Filename</th>
 <th>Original File Name</th>
 <th>Replacement File Name</th>
 <th>% Match</th>
@@ -236,9 +240,8 @@ $('#report').DataTable();
     print(f"\nTotal: Processed: {total_summary['Processed']}, Linked: {total_summary['Linked']}, Renamed: {total_summary['Renamed']}, BackedUp: {total_summary['BackedUp']}, Left: {total_summary['Left']}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Rename or move media files based on matching table names.')
+    parser = argparse.ArgumentParser(description='Rename or move media files based on matching table filenames.')
     parser.add_argument('--dry-run', action='store_true', help='Show what actions would be taken without making changes')
-    parser.add_argument('--process-first', type=int, help='Process only the first x tables')
     parser.add_argument('--debug', action='store_true', help='Show detailed debug information for matches 80% or better')
     args = parser.parse_args()
 
@@ -247,8 +250,8 @@ def main():
     backup_dir = r"C:\vPinball\backupmedia\PinUPSystem\POPMedia\Visual Pinball X"
     media_types = ['.jpg', '.mp4', '.png', '.apng', '.mp3']
 
-    table_names = fetch_table_names(database_path, debug=args.debug)
-    process_media_files(media_dir, table_names, media_types, backup_dir, dry_run=args.dry_run, threshold=0.90, debug=args.debug)
+    table_filenames = fetch_table_filenames(database_path, debug=args.debug)
+    process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=args.dry_run, threshold=0.90, debug=args.debug)
 
 if __name__ == "__main__":
     main()
