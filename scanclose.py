@@ -105,6 +105,8 @@ def create_hard_links(media_dir, table_names, media_types, dry_run=False, proces
                     print(f"{idx + 1}. {confidence:.2f}% - Created hard link: {link_name} -> {file_path}")
                 else:
                     print(f"Error: File {file_path} does not exist")
+            else:
+                print(f"{idx + 1}. {confidence:.2f}% - Link already exists: {link_name}")
 
 # Main function
 def main():
