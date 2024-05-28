@@ -121,7 +121,7 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
                     best_match = matches[0][1]
                     confidence = matches[0][0] * 100
                     new_file_path = os.path.join(root, best_match + os.path.splitext(file)[1])
-                    if confidence >= 95:
+                    if confidence >= 95 and best_match != file_name:
                         if new_file_path != file_path:
                             if dry_run:
                                 actions.append(["Rename", best_match, file_path, new_file_path, f"{confidence:.2f}%"])
@@ -151,20 +151,8 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
                                     summary[media_type]["Linked"] += 1
                                     total_summary["Linked"] += 1
                     else:
-                        backup_subdir = os.path.relpath(root, media_dir)
-                        backup_path = os.path.join(backup_dir, backup_subdir)
-                        if dry_run:
-                            backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
-                            actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), f"{confidence:.2f}% (below threshold)"])
-                            summary[media_type]["BackedUp"] += 1
-                            total_summary["BackedUp"] += 1
-                        else:
-                            os.makedirs(backup_path, exist_ok=True)
-                            backup_filename = ensure_unique_filename(backup_path, os.path.basename(file_path))
-                            shutil.move(file_path, os.path.join(backup_path, backup_filename))
-                            actions.append(["Move", "", file_path, os.path.join(backup_path, backup_filename), f"{confidence:.2f}% (below threshold)"])
-                            summary[media_type]["BackedUp"] += 1
-                            total_summary["BackedUp"] += 1
+                        summary[media_type]["Left"] += 1
+                        total_summary["Left"] += 1
                 else:
                     backup_subdir = os.path.relpath(root, media_dir)
                     backup_path = os.path.join(backup_dir, backup_subdir)
