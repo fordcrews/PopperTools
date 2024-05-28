@@ -89,7 +89,6 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
         "GameSelect": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Loading": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Menu": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "mscomctl.ocx": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Other1": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Other2": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "PlayField": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
