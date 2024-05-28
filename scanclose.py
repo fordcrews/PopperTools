@@ -37,7 +37,7 @@ def fetch_table_filenames(database_path, debug=False):
 
     placeholder = ', '.join(['?'] * len(visual_pinball_ids))
     cursor.execute(f"SELECT {game_filename_column} FROM Games WHERE {emulator_id_column} IN ({placeholder}) ORDER BY {game_filename_column}", visual_pinball_ids)
-    table_filenames = [os.path.splitext(row[0])[0] for row in cursor.fetchall()]
+    table_filenames = [os.path.splitext(row[0])[0] for row in cursor.fetchall() if row[0] and row[0].strip()]
 
     if debug:
         print(f"Visual Pinball table filenames: {table_filenames}")
@@ -151,6 +151,7 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
                                     summary[media_type]["Linked"] += 1
                                     total_summary["Linked"] += 1
                     else:
+                        actions.append(["Leave", best_match, file_path, "", f"{confidence:.2f}%"])
                         summary[media_type]["Left"] += 1
                         total_summary["Left"] += 1
                 else:
@@ -181,10 +182,12 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
 <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.print.min.js"></script>
 <title>Media Processing Report</title>
 </head>
 <body>
@@ -211,7 +214,12 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
 </table>
 <script>
 $(document).ready(function() {
-$('#report').DataTable();
+$('#report').DataTable({
+    dom: 'Bfrtip',
+    buttons: [
+        'copy', 'csv', 'excel', 'pdf', 'print'
+    ]
+});
 } );
 </script>
 </div>
@@ -239,6 +247,10 @@ def main():
     media_types = ['.jpg', '.mp4', '.png', '.apng', '.mp3']
 
     table_filenames = fetch_table_filenames(database_path, debug=args.debug)
+    if not table_filenames:
+        print("No valid table filenames found.")
+        return
+
     process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=args.dry_run, threshold=0.90, debug=args.debug)
 
 if __name__ == "__main__":
