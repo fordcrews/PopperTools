@@ -80,23 +80,23 @@ def ensure_unique_filename(directory, filename):
 # Function to process media files
 def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=False, threshold=0.90, debug=False):
     summary = {
-        "Audio": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "AudioLaunch": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "BackGlass": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "DMD": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "GameHelp": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "GameInfo": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "GameSelect": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Loading": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Menu": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Other1": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Other2": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "PlayField": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "System": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Topper": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "Wheel": {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Audio": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "AudioLaunch": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "BackGlass": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "DMD": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "GameHelp": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "GameInfo": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "GameSelect": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Loading": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Menu": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Other1": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Other2": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "PlayField": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "System": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Topper": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
+        "Wheel": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
     }
-    total_summary = {"Processed": 0, "Linked": 0, "Renamed": 0, "BackedUp": 0, "Left": 0}
+    total_summary = {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0}
 
     actions = []
 
@@ -138,17 +138,17 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
                                     total_summary["Left"] += 1
 
                         for match in matches[1:]:
-                            link_name = os.path.join(root, match[1] + os.path.splitext(file)[1])
+                            copy_name = os.path.join(root, match[1] + os.path.splitext(file)[1])
                             if dry_run:
-                                actions.append(["Link", match[1], original_file_path, link_name, f"{match[0]*100:.2f}%"])
-                                summary[media_type]["Linked"] += 1
-                                total_summary["Linked"] += 1
+                                actions.append(["Copy", match[1], original_file_path, copy_name, f"{match[0]*100:.2f}%"])
+                                summary[media_type]["Copied"] += 1
+                                total_summary["Copied"] += 1
                             else:
-                                if os.path.exists(original_file_path) and not os.path.exists(link_name):
-                                    os.link(original_file_path, link_name)
-                                    actions.append(["Link", match[1], original_file_path, link_name, f"{match[0]*100:.2f}%"])
-                                    summary[media_type]["Linked"] += 1
-                                    total_summary["Linked"] += 1
+                                if os.path.exists(original_file_path) and not os.path.exists(copy_name):
+                                    shutil.copy2(original_file_path, copy_name)
+                                    actions.append(["Copy", match[1], original_file_path, copy_name, f"{match[0]*100:.2f}%"])
+                                    summary[media_type]["Copied"] += 1
+                                    total_summary["Copied"] += 1
                     else:
                         actions.append(["Leave", best_match, file_path, "", f"{confidence:.2f}%"])
                         summary[media_type]["Left"] += 1
@@ -219,8 +219,29 @@ $('#report').DataTable({
         'copy', 'csv', 'excel', 'pdf', 'print'
     ]
 });
-} );
+});
 </script>
+<h3>Summary:</h3>
+<table class="table table-striped table-bordered" style="width:100%">
+<thead>
+<tr>
+<th>Media Type</th>
+<th>Processed</th>
+<th>Copied</th>
+<th>Renamed</th>
+<th>BackedUp</th>
+<th>Left</th>
+</tr>
+</thead>
+<tbody>
+"""
+    for key, value in summary.items():
+        html_content += f"<tr><td>{html.escape(key)}</td><td>{value['Processed']}</td><td>{value['Copied']}</td><td>{value['Renamed']}</td><td>{value['BackedUp']}</td><td>{value['Left']}</td></tr>"
+    html_content += f"<tr><td>Total</td><td>{total_summary['Processed']}</td><td>{total_summary['Copied']}</td><td>{total_summary['Renamed']}</td><td>{total_summary['BackedUp']}</td><td>{total_summary['Left']}</td></tr>"
+
+    html_content += """
+</tbody>
+</table>
 </div>
 </body>
 </html>
@@ -231,8 +252,8 @@ $('#report').DataTable({
 
     print("\nSummary:")
     for key, value in summary.items():
-        print(f"{key}: Processed: {value['Processed']}, Linked: {value['Linked']}, Renamed: {value['Renamed']}, BackedUp: {value['BackedUp']}, Left: {value['Left']}")
-    print(f"\nTotal: Processed: {total_summary['Processed']}, Linked: {total_summary['Linked']}, Renamed: {total_summary['Renamed']}, BackedUp: {total_summary['BackedUp']}, Left: {total_summary['Left']}")
+        print(f"{key}: Processed: {value['Processed']}, Copied: {value['Copied']}, Renamed: {value['Renamed']}, BackedUp: {value['BackedUp']}, Left: {value['Left']}")
+    print(f"\nTotal: Processed: {total_summary['Processed']}, Copied: {total_summary['Copied']}, Renamed: {total_summary['Renamed']}, BackedUp: {total_summary['BackedUp']}, Left: {total_summary['Left']}")
 
 def main():
     parser = argparse.ArgumentParser(description='Rename or move media files based on matching table filenames.')
