@@ -78,7 +78,7 @@ def ensure_unique_filename(directory, filename):
     return unique_filename
 
 # Function to process media files
-def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=False, threshold=0.90, debug=False):
+def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=True, threshold=0.90, debug=False):
     summary = {
         "Audio": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "AudioLaunch": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
@@ -257,7 +257,7 @@ $('#report').DataTable({
 
 def main():
     parser = argparse.ArgumentParser(description='Rename or move media files based on matching table filenames.')
-    parser.add_argument('--dry-run', action='store_true', help='Show what actions would be taken without making changes')
+    parser.add_argument('--process-files', action='store_true', help='Process the files after reviewing the dry run output')
     parser.add_argument('--debug', action='store_true', help='Show detailed debug information for matches 80% or better')
     args = parser.parse_args()
 
@@ -271,7 +271,13 @@ def main():
         print("No valid table filenames found.")
         return
 
-    process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=args.dry_run, threshold=0.90, debug=args.debug)
+    dry_run = not args.process_files
+    process_media_files(media_dir, table_filenames, media_types, backup_dir, dry_run=dry_run, threshold=0.90, debug=args.debug)
+
+    if dry_run:
+        print("\nDry run complete. Review the report (report.html) before processing the files.")
+    else:
+        print("\nFile processing complete. Review the report (report.html) for details.")
 
 if __name__ == "__main__":
     main()
