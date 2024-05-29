@@ -92,7 +92,6 @@ def process_media_files(media_dir, table_filenames, media_types, backup_dir, dry
         "Other1": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Other2": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "PlayField": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
-        "System": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Topper": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
         "Wheel": {"Processed": 0, "Copied": 0, "Renamed": 0, "BackedUp": 0, "Left": 0},
     }
