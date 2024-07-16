@@ -1,8 +1,17 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3
+import logging
 
 app = Flask(__name__)
 db_path = 'C:/vPinball/PinUPSystem/PupDatabase.db'
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(message)s',
+                    handlers=[
+                        logging.FileHandler("debug.log"),
+                        logging.StreamHandler()
+                    ])
 
 # List of valid columns for selection
 valid_columns = [
@@ -13,37 +22,51 @@ valid_columns = [
 
 def get_column_values_with_counts(column):
     if column not in valid_columns:
+        logging.warning(f"Invalid column: {column}")
         return []
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    query = f"""
-    SELECT {column}, COUNT(*) as ItemCount 
-    FROM Games 
-    WHERE {column} IS NOT NULL AND {column} != ''
-    GROUP BY {column} 
-    HAVING COUNT(*) > 0
-    ORDER BY {column}
-    """
-    cursor.execute(query)
-    values = cursor.fetchall()
-    conn.close()
-    return values
+    logging.debug(f"Fetching values for column: {column}")
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        query = f"""
+        SELECT {column}, COUNT(*) as ItemCount 
+        FROM Games 
+        WHERE {column} IS NOT NULL AND {column} != ''
+        GROUP BY {column} 
+        HAVING COUNT(*) > 0
+        ORDER BY {column}
+        """
+        cursor.execute(query)
+        values = cursor.fetchall()
+        conn.close()
+        logging.debug(f"Fetched {len(values)} values for column: {column}")
+        return values
+    except Exception as e:
+        logging.error(f"Error fetching values for column {column}: {e}")
+        return []
 
 def get_games_by_column(column, values):
     if column not in valid_columns:
+        logging.warning(f"Invalid column: {column}")
         return []
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    placeholders = ','.join('?' for _ in values)
-    query = f"""
-    SELECT GameName 
-    FROM Games 
-    WHERE {column} IN ({placeholders})
-    """
-    cursor.execute(query, values)
-    games = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return games
+    logging.debug(f"Fetching games for column: {column} with values: {values}")
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        placeholders = ','.join('?' for _ in values)
+        query = f"""
+        SELECT GameName 
+        FROM Games 
+        WHERE {column} IN ({placeholders})
+        """
+        cursor.execute(query, values)
+        games = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        logging.debug(f"Fetched {len(games)} games for column: {column} with values: {values}")
+        return games
+    except Exception as e:
+        logging.error(f"Error fetching games for column {column} with values {values}: {e}")
+        return []
 
 @app.route('/')
 def index():
@@ -52,6 +75,7 @@ def index():
 @app.route('/get_values', methods=['POST'])
 def get_values():
     column = request.json['column']
+    logging.info(f"Received request to get values for column: {column}")
     values = get_column_values_with_counts(column)
     return jsonify(values)
 
@@ -59,8 +83,10 @@ def get_values():
 def get_games():
     column = request.json['column']
     values = request.json['values']
+    logging.info(f"Received request to get games for column: {column} with values: {values}")
     games = get_games_by_column(column, values)
     return jsonify(games)
 
 if __name__ == '__main__':
+    logging.info("Starting the Flask application")
     app.run(debug=True, host='0.0.0.0', port=5000)
