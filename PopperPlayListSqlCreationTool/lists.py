@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 import logging
+from collections import Counter
 
 app = Flask(__name__)
 db_path = 'C:/vPinball/PinUPSystem/PupDatabase.db'
@@ -20,14 +21,21 @@ valid_columns = [
     "Special", "CUSTOM2", "CUSTOM3", "GAMEVER", "ALTEXE", "DesignedBy"
 ]
 
+# Columns that need splitting
+split_columns = ["TAGS", "Author", "DesignedBy", "Category", "GameTheme"]
+
 def get_column_values_with_counts(column):
     if column not in valid_columns:
         logging.warning(f"Invalid column: {column}")
         return []
     logging.debug(f"Fetching values for column: {column}")
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    if column in split_columns:
+        query = f"SELECT {column} FROM Games WHERE {column} IS NOT NULL AND {column} != ''"
+    else:
         query = f"""
         SELECT {column}, COUNT(*) as ItemCount 
         FROM Games 
@@ -36,37 +44,55 @@ def get_column_values_with_counts(column):
         HAVING COUNT(*) > 0
         ORDER BY {column}
         """
-        cursor.execute(query)
-        values = cursor.fetchall()
-        conn.close()
-        logging.debug(f"Fetched {len(values)} values for column: {column}")
-        return values
-    except Exception as e:
-        logging.error(f"Error fetching values for column {column}: {e}")
-        return []
+    
+    logging.debug(f"Executing query: {query}")
+    cursor.execute(query)
+    results = cursor.fetchall()
+    conn.close()
+
+    if column in split_columns:
+        values_counter = Counter()
+        for row in results:
+            items = [item.strip() for item in row[0].split(",")]
+            values_counter.update(items)
+        
+        values = [(tag, count) for tag, count in values_counter.items()]
+        values.sort(key=lambda x: x[0])
+    else:
+        values = results
+    
+    logging.debug(f"Fetched {len(values)} values for column: {column}")
+    return values
 
 def get_games_by_column(column, values):
     if column not in valid_columns:
         logging.warning(f"Invalid column: {column}")
         return []
     logging.debug(f"Fetching games for column: {column} with values: {values}")
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    if column in split_columns:
+        query_fragments = [f"{column} LIKE ?" for _ in values]
+        query = f"SELECT GameName FROM Games WHERE {' OR '.join(query_fragments)}"
+        like_values = [f"%{value}%" for value in values]
+        logging.debug(f"Executing query: {query} with values: {like_values}")
+        cursor.execute(query, like_values)
+    else:
         placeholders = ','.join('?' for _ in values)
-        query = f"""
-        SELECT GameName 
-        FROM Games 
-        WHERE {column} IN ({placeholders})
-        """
+        query = f"SELECT GameName FROM Games WHERE {column} IN ({placeholders})"
+        logging.debug(f"Executing query: {query} with values: {values}")
         cursor.execute(query, values)
-        games = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        logging.debug(f"Fetched {len(games)} games for column: {column} with values: {values}")
-        return games
-    except Exception as e:
-        logging.error(f"Error fetching games for column {column} with values {values}: {e}")
-        return []
+    
+    games = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    # Remove duplicates
+    games = list(set(games))
+    
+    logging.debug(f"Fetched {len(games)} games for column: {column} with values: {values}")
+    return games
 
 @app.route('/')
 def index():
