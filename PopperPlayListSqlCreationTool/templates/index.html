@@ -130,7 +130,8 @@
                     gameList.appendChild(div);
                 });
 
-                let sqlQuery = `SELECT * FROM Games WHERE ${column} IN ('${selectedValues.join("','")}')`;
+                let likeClauses = selectedValues.map(value => `${column} LIKE '%${value}%'`).join(' OR ');
+                let sqlQuery = `SELECT * FROM Games WHERE ${likeClauses}`;
                 document.getElementById('sqlQuery').innerText = sqlQuery;
             });
         }
