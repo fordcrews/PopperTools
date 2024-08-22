@@ -43,8 +43,11 @@ def backup_files(files, backup_zip, root_directories):
 
 def get_files_to_backup(game_file, rom_file, dir_games):
     files_to_backup = []
+
     base_game_file = os.path.splitext(game_file)[0]
+
     relevant_directories = [dir_games] + additional_dirs
+
     # Search in the main directories
     for directory in relevant_directories:
         if debug: print(f"Searching in directory: {directory}")
@@ -54,6 +57,7 @@ def get_files_to_backup(game_file, rom_file, dir_games):
                     file_path = os.path.join(root, file)
                     if debug: print(f"Found file to backup: {file_path}")
                     files_to_backup.append(file_path)
+
     # Specific search for Future Pinball cfg files
     if os.path.splitext(game_file)[1] == '.fpt':
         cfg_directory = "C:\\vpinball\\FuturePinball"
@@ -64,15 +68,7 @@ def get_files_to_backup(game_file, rom_file, dir_games):
                     file_path = os.path.join(root, file)
                     if debug: print(f"Found Future Pinball cfg file to backup: {file_path}")
                     files_to_backup.append(file_path)
-    # Search for media files in POPMedia
-    popmedia_directory = "C:\\vpinball\\PinUPSystem\\POPMedia"
-    if debug: print(f"Searching for media files in directory: {popmedia_directory}")
-    for root, _, files in os.walk(popmedia_directory):
-        for file in files:
-            if fnmatch(file, f"{base_game_file}.*"):
-                file_path = os.path.join(root, file)
-                if debug: print(f"Found media file to backup: {file_path}")
-                files_to_backup.append(file_path)
+
     # Search for PUPVideo files in specific ROM directory
     if rom_file:
         pupvideos_directory = os.path.join("C:\\vpinball\\PinUPSystem\\PUPVideos", rom_file)
@@ -83,6 +79,7 @@ def get_files_to_backup(game_file, rom_file, dir_games):
                     file_path = os.path.join(root, file)
                     if debug: print(f"Found video file to backup: {file_path}")
                     files_to_backup.append(file_path)
+
     return files_to_backup, relevant_directories
 
 def main():
