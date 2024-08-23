@@ -53,7 +53,8 @@ def get_files_to_backup(game_file, rom_file, dir_games):
         if debug: print(f"Searching in directory: {directory}")
         for root, _, files in os.walk(directory):
             for file in files:
-                if fnmatch(file, f"{base_game_file}.*") or (rom_file and fnmatch(file, f"{rom_file}.*")):
+                # Match both the base game file and any SCREEN3 videos
+                if fnmatch(file, f"{base_game_file}.*") or (rom_file and fnmatch(file, f"{rom_file}.*")) or fnmatch(file, f"*SCREEN3*"):
                     file_path = os.path.join(root, file)
                     if debug: print(f"Found file to backup: {file_path}")
                     files_to_backup.append(file_path)
@@ -76,11 +77,14 @@ def get_files_to_backup(game_file, rom_file, dir_games):
             if debug: print(f"Searching for video files in directory: {pupvideos_directory}")
             for root, _, files in os.walk(pupvideos_directory):
                 for file in files:
-                    file_path = os.path.join(root, file)
-                    if debug: print(f"Found video file to backup: {file_path}")
-                    files_to_backup.append(file_path)
+                    # Match both the base rom file and any SCREEN3 videos
+                    if fnmatch(file, f"{base_game_file}.*") or fnmatch(file, f"*SCREEN3*"):
+                        file_path = os.path.join(root, file)
+                        if debug: print(f"Found video file to backup: {file_path}")
+                        files_to_backup.append(file_path)
 
     return files_to_backup, relevant_directories
+
 
 def main():
     conn = connect_db(db_path)
